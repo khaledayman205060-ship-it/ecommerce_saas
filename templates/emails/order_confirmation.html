@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f6f6f6; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 600px; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin: 0 auto; }
+        .header { text-align: center; border-bottom: 2px solid #eeeeee; padding-bottom: 20px; }
+        .header h1 { color: #5469d4; margin: 0; }
+        .details { margin: 20px 0; line-height: 1.6; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .table th, .table td { border-bottom: 1px solid #eeeeee; padding: 10px; text-align: left; }
+        .table th { background-color: #f8f9fa; }
+        .total { font-size: 18px; font-weight: bold; color: #5469d4; text-align: right; margin-top: 20px; }
+        .footer { text-align: center; font-size: 12px; color: #999; margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Thank you for your purchase! 🎉</h1>
+            <p>Your payment was completed successfully.</p>
+        </div>
+        <div class="details">
+            <p>Hi <strong>{{ customer_name }}</strong>,</p>
+            <p>We've received payment for your <strong>Order #{{ order_id }}</strong>. Here are the invoice details:</p>
+            
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order_items %}
+                    <tr>
+                        <td>{{ item.product.name }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>${{ item.product.price }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #999;">Test Order (No items loaded)</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="total">
+                Total Paid: ${{ total_price }}
+            </div>
+        </div>
+        <div class="footer">
+            <p>If you have any questions, feel free to contact our support team.</p>
+            <p>&copy; 2026 Ecommerce SaaS. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

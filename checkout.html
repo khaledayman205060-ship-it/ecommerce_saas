@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>صفحة الدفع التجريبية</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f4f6f8; margin: 0; }
+        .payment-card { background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        #card-element { border: 1px solid #ccc; padding: 12px; border-radius: 5px; margin-bottom: 20px; background: #fff; }
+        button { width: 100%; padding: 12px; background: #5469d4; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        button:disabled { background: #a2a2a2; }
+        #message { margin-top: 15px; text-align: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="payment-card">
+    <h2 style="text-align: center; margin-bottom: 20px;">تأكيد ودفع الطلب</h2>
+    <form id="payment-form">
+        <div id="card-element"></div>
+        <button id="submit-btn" type="submit">ادفع الآن ($50.00)</button>
+    </form>
+    <div id="message"></div>
+</div>
+
+<script>
+    // 1. حط الـ Publishable Key بتاع حسابك في Stripe (اللي بيبدأ بـ pk_test_)
+    const stripe = Stripe('pk_test_ضع_مفتاح_الـ_Publishable_هنا');
+    const elements = stripe.elements();
+    const cardElement = elements.create('card');
+    cardElement.mount('#card-element');
+
+    const form = document.getElementById('payment-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const messageDiv = document.getElementById('message');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        submitBtn.disabled = true;
+        messageDiv.innerText = "جاري معالجة الدفع...";
+
+        try {
+            // 2. طلب الـ clientSecret من سيرفر الدجانغو
+            // ⚠️ استبدل الـ Token بالـ Token الحقيقي بتاعك اللي خدته من Thunder Client
+            const response = await fetch('/api/orders/checkout/create-intent/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Token اكتب_الـ_Token_بتاعك_هنا' 
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'حدث خطأ في إنشاء الأوردر');
+            }
+
+            // 3. تأكيد عملية الدفع عن طريق Stripe
+            const result = await stripe.confirmCardPayment(data.clientSecret, {
+                payment_method: {
+                    card: cardElement,
+                }
+            });
+
+            if (result.error) {
+                messageDiv.style.color = "red";
+                messageDiv.innerText = "❌ فشل الدفع: " + result.error.message;
+                submitBtn.disabled = false;
+            } else if (result.paymentIntent.status === 'succeeded') {
+                messageDiv.style.color = "green";
+                messageDiv.innerText = "🎉 تم الدفع بنجاح! جاري تحويل الأوردر لـ Paid...";
+            }
+        } catch (err) {
+            messageDiv.style.color = "red";
+            messageDiv.innerText = "❌ " + err.message;
+            submitBtn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
