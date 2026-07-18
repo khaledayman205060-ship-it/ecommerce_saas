@@ -19,14 +19,15 @@
     <h2 style="text-align: center; margin-bottom: 20px;">تأكيد ودفع الطلب</h2>
     <form id="payment-form">
         <div id="card-element"></div>
-        <button id="submit-btn" type="submit">ادفع الآن ($50.00)</button>
+        <button id="submit-btn" type="submit">تأكيد الدفع والطلب</button>
     </form>
     <div id="message"></div>
 </div>
 
 <script>
-    // 1. حط الـ Publishable Key بتاع حسابك في Stripe (اللي بيبدأ بـ pk_test_)
-    const stripe = Stripe('pk_test_ضع_مفتاح_الـ_Publishable_هنا');
+    // تم وضع الـ Publishable Key الخاص بك هنا بأمان للـ Frontend
+    const stripe = Stripe('pk_test_51TreH4626E0ReYFavmpXReC7CUbaaY6yXsfobGdJXHIPdWjHfOpK5vQblBrRHFJPOSKSci3Pkh57QfaRCHKq9tYO00LAldqquI');
+    
     const elements = stripe.elements();
     const cardElement = elements.create('card');
     cardElement.mount('#card-element');
@@ -38,16 +39,15 @@
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         submitBtn.disabled = true;
+        messageDiv.style.color = "black";
         messageDiv.innerText = "جاري معالجة الدفع...";
 
         try {
-            // 2. طلب الـ clientSecret من سيرفر الدجانغو
-            // ⚠️ استبدل الـ Token بالـ Token الحقيقي بتاعك اللي خدته من Thunder Client
             const response = await fetch('/api/orders/checkout/create-intent/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Token اكتب_الـ_Token_بتاعك_هنا' 
+                    'X-CSRFToken': getCookie('csrftoken')
                 }
             });
 
@@ -57,7 +57,6 @@
                 throw new Error(data.error || 'حدث خطأ في إنشاء الأوردر');
             }
 
-            // 3. تأكيد عملية الدفع عن طريق Stripe
             const result = await stripe.confirmCardPayment(data.clientSecret, {
                 payment_method: {
                     card: cardElement,
@@ -70,7 +69,11 @@
                 submitBtn.disabled = false;
             } else if (result.paymentIntent.status === 'succeeded') {
                 messageDiv.style.color = "green";
-                messageDiv.innerText = "🎉 تم الدفع بنجاح! جاري تحويل الأوردر لـ Paid...";
+                messageDiv.innerText = "🎉 تم الدفع بنجاح! جاري توجيهك إلى الـ Dashboard...";
+                
+                setTimeout(() => {
+                    window.location.href = '/api/orders/dashboard/';
+                }, 2000);
             }
         } catch (err) {
             messageDiv.style.color = "red";
@@ -78,6 +81,21 @@
             submitBtn.disabled = false;
         }
     });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 </script>
 
 </body>

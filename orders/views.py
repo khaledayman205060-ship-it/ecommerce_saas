@@ -14,6 +14,9 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from .models import Order  # تأكد أن اسم الموديل عندك في التطبيق هو Order
 
+# 👇 استدعاء دالة إرسال الفاتورة الـ PDF من ملف الـ utils المساعد
+from .utils import send_invoice_email
+
 # 1. إعداد مكتبة environ لقراءة ملف الـ .env المخفي
 env = environ.Env()
 environ.Env.read_env(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
@@ -184,14 +187,14 @@ def stripe_webhook(request):
         
         if order_id:
             try:
-                # تحديث حالة الـ Order لـ مدفوع
+                # تحديث حالة الـ Order لـ مدفوع[cite: 1]
                 order = Order.objects.get(id=order_id)
                 order.status = 'paid'
                 order.save()
                 
                 print(f"\n🎉🎉🎉 SUCCESS: Order #{order.id} has been marked as PAID!")
 
-                # تقليل كمية المنتجات في المخزن (Stock/Inventory)
+                # تقليل كمية المنتجات في المخزن (Stock/Inventory)[cite: 1]
                 order_items = []
                 if hasattr(order, 'items'):
                     order_items = order.items.all()
@@ -209,7 +212,7 @@ def stripe_webhook(request):
                         product.save()
                         print(f"📉 Quantity updated for [{product.name}]: Remaining ({product.quantity})")
 
-                # تفريغ سلة المشتريات (Clear User Cart)
+                # تفريغ سلة المشتريات (Clear User Cart)[cite: 1]
                 customer = order.customer
                 if customer and hasattr(customer, 'cart'):
                     try:
@@ -218,8 +221,16 @@ def stripe_webhook(request):
                     except Exception as cart_err:
                         print(f"⚠️ Could not clear cart: {str(cart_err)}")
 
-                # إرسال إيميل الفاتورة التلقائي للعميل 📧
+                # إرسال إيميل الفاتورة التلقائي للعميل 📧[cite: 1]
                 send_order_confirmation_email(order)
+
+                # 👇👇 تشغيل نظام إرسال فاتورة الـ PDF التلقائية (الخطوة الرابعة) 👇👇
+                try:
+                    # نمرر الطلب والمنتجات للدالة التي تقوم بالتوليد والإرسال
+                    send_invoice_email(order, order_items)
+                    print(f"📄 Automated PDF Invoice sent successfully for Order #{order.id}!")
+                except Exception as pdf_email_err:
+                    print(f"⚠️ Webhook caught an error while sending PDF Invoice: {str(pdf_email_err)}")
 
                 print(f"🏁 Order #{order.id} lifecycle completed successfully!\n")
                 
@@ -237,12 +248,12 @@ def stripe_webhook(request):
         if order_id:
             try:
                 order = Order.objects.get(id=order_id)
-                order.status = 'failed'  # تحديث حالة الأوردر لـ فاشل
+                order.status = 'failed'  # تحديث حالة الأوردر لـ فاشل[cite: 1]
                 order.save()
                 
                 print(f"\n❌❌❌ PAYMENT FAILED: Order #{order.id} marked as FAILED. Reason: {error_message}")
                 
-                # إرسال إيميل الفشل التنبيهي للعميل 📧
+                # إرسال إيميل الفشل التنبيهي للعميل 📧[cite: 1]
                 send_payment_failed_email(order, error_message)
                 
                 print(f"🏁 Order #{order.id} lifecycle stopped due to failure.\n")
@@ -259,7 +270,7 @@ def stripe_webhook(request):
         if order_id:
             try:
                 order = Order.objects.get(id=order_id)
-                order.status = 'canceled'  # تحديث حالة الأوردر لـ ملغي
+                order.status = 'canceled'  # تحديث حالة الأوردر لـ ملغي[cite: 1]
                 order.save()
                 print(f"\n🚫 PAYMENT CANCELED: Order #{order.id} marked as CANCELED.\n")
             except Order.DoesNotExist:
@@ -268,14 +279,14 @@ def stripe_webhook(request):
     return HttpResponse(status=200)
 
 
-@login_required  # 🔒 حماية الصفحة: لو اليوزر مش مسجل دخول، يتم تحويله لصفحة الـ Login تلقائياً
+@login_required  # 🔒 حماية الصفحة: لو اليوزر مش مسجل دخول، يتم تحويله لصفحة الـ Login تلقائياً[cite: 1]
 def checkout_page(request):
     publishable_key = env("STRIPE_PUBLISHABLE_KEY")
     
-    # 1️⃣ جلب المستخدم الحالي الفعلي المسجل في المتصفح
+    # 1️⃣ جلب المستخدم الحالي الفعلي المسجل في المتصفح[cite: 1]
     user = request.user
     
-    # 2️⃣ جلب سلة المشتريات الخاصة باليوزر الحالي وحساب الإجمالي الحقيقي ديناميكياً
+    # 2️⃣ جلب سلة المشتريات الخاصة باليوزر الحالي وحساب الإجمالي الحقيقي ديناميكياً[cite: 1]
     total_price = 0.00
     cart_items = []
     
@@ -284,7 +295,7 @@ def checkout_page(request):
             total_price += float(item.product.price * item.quantity)
             cart_items.append(item)
     
-    # منع الدخول إذا كانت السلة فارغة مع توفير زر للعودة للداشبورد بأمان
+    # منع الدخول إذا كانت السلة فارغة مع توفير زر للعودة للداشبورد بأمان[cite: 1]
     if not cart_items:
         return HttpResponse(
             "<div style='text-align:center; margin-top:50px; font-family:sans-serif;'>"
@@ -294,14 +305,14 @@ def checkout_page(request):
             "</div>"
         )
     
-    # 3️⃣ إنشاء الأوردر الحقيقي في قاعدة البيانات مربوط باليوزر الحالي كـ Unpaid
+    # 3️⃣ إنشاء الأوردر الحقيقي في قاعدة البيانات مربوط باليوزر الحالي كـ Unpaid[cite: 1]
     new_order = Order.objects.create(
         customer=user,
         total_price=total_price,
         status='unpaid'
     )
     
-    # 4️⃣ نقل محتويات السلة إلى الأوردر (OrderItem)
+    # 4️⃣ نقل محتويات السلة إلى الأوردر (OrderItem)[cite: 1]
     for cart_item in cart_items:
         try:
             from .models import OrderItem
@@ -314,7 +325,7 @@ def checkout_page(request):
         except Exception as e:
             print(f"⚠️ Could not copy cart item to order: {str(e)}")
 
-    # 5️⃣ رندر صفحة الـ HTML مع البيانات الحقيقية بالكامل
+    # 5️⃣ رندر صفحة الـ HTML مع البيانات الحقيقية بالكامل[cite: 1]
     html_content = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -395,7 +406,6 @@ def checkout_page(request):
                     messageDiv.style.color = "green";
                     messageDiv.innerText = "🎉 Success! Redirecting to Dashboard...";
                     
-                    // 🔄 توجيه العميل تلقائياً إلى لوحة التحكم بعد ثانيتين من نجاح العملية ليرى الحالة الجديدة
                     setTimeout(() => {{
                         window.location.href = '/api/orders/dashboard/';
                     }}, 2000);
@@ -407,7 +417,6 @@ def checkout_page(request):
             }}
         }});
 
-        // دالة مساعدة لجلب الـ CSRF Token من الـ Cookies
         function getCookie(name) {{
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {{
@@ -429,26 +438,24 @@ def checkout_page(request):
     return HttpResponse(html_content)
 
 
-@login_required  # 🔒 تأمين الصفحة: يجب تسجيل الدخول لرؤية الطلبات الخاصة بك فقط
+@login_required  # 🔒 تأمين الصفحة: يجب تسجيل الدخول لرؤية الطلبات الخاصة بك فقط[cite: 1]
 def customer_dashboard(request):
     user = request.user
     
-    # 1️⃣ جلب جميع طلبات المستخدم الحالي من الأحدث للأقدم
+    # 1️⃣ جلب جميع طلبات المستخدم الحالي من الأحدث للأقدم[cite: 1]
     orders = Order.objects.filter(customer=user).order_by('-id')
     
-    # 2️⃣ حساب الإحصائيات ديناميكياً
+    # 2️⃣ حساب الإحصائيات ديناميكياً[cite: 1]
     total_orders_count = orders.count()
     paid_orders_count = orders.filter(status='paid').count()
     failed_orders_count = orders.filter(status='failed').count()
     pending_orders_count = orders.filter(status='unpaid').count()
     
-    # حساب إجمالي المبالغ التي دفعها العميل فعلياً
     total_spent = sum(float(order.total_price) for order in orders.filter(status='paid'))
 
-    # 3️⃣ بناء محتوى الصفحة بـ Tailwind CSS مظهر عصري واحترافي
+    # 3️⃣ بناء محتوى الصفحة بـ Tailwind CSS مظهر عصري واحترافي[cite: 1]
     orders_rows = ""
     for order in orders:
-        # تحديد لون الـ Badge الخاص بالحالة
         if order.status == 'paid':
             status_badge = '<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">✅ Paid</span>'
         elif order.status == 'failed':
@@ -458,7 +465,6 @@ def customer_dashboard(request):
         else:
             status_badge = '<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">⏳ Unpaid</span>'
 
-        # جلب أسماء المنتجات داخل الطلب لعرضها
         items_list = []
         order_items = order.items.all() if hasattr(order, 'items') else order.orderitem_set.all()
         for item in order_items:

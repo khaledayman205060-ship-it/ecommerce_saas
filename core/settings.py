@@ -106,3 +106,5 @@ CORS_ALLOW_ALL_ORIGINS = True
 # ----------------- 📧 إعدادات إرسال الإيميل التجريبي -----------------
 # السطر ده بيخلي الإيميلات تُطبع في التيرمينال فوراً للتجربة المحلية السهلة والآمنة
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# لإظهار الإيميلات في الـ Terminal أثناء التطوير التجريبي
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

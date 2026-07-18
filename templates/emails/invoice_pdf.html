@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; }
+        .header { font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #4A90E2; }
+        table { width: 100%; line-height: inherit; text-align: left; border-collapse: collapse; }
+        table th { background: #f4f4f4; padding: 8px; font-weight: bold; }
+        table td { padding: 8px; border-bottom: 1px solid #eee; }
+        .total { font-weight: bold; font-size: 18px; text-align: right; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="invoice-box">
+        <div class="header">ECOMMERCE SAAS - INVOICE</div>
+        <p><strong>Order ID:</strong> {{ order.id }}</p>
+        <p><strong>Date:</strong> {{ order.created_at|date:"Y-m-d H:i" }}</p>
+        <p><strong>Customer Email:</strong> {{ order.customer_email }}</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Item Description</th>
+                    <th>Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.product_name }} (x{{ item.quantity }})</td>
+                    <td>${{ item.price }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="total"> Total Paid: ${{ order.total_amount }} </div>
+    </div>
+</body>
+</html>
