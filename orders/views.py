@@ -13,6 +13,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from .models import Order  # تأكد أن اسم الموديل عندك في التطبيق هو Order
+from django.db.models import Sum
 
 # 👇 استدعاء دالة إرسال الفاتورة الـ PDF من ملف الـ utils المساعد
 from .utils import send_invoice_email
@@ -575,3 +576,25 @@ def customer_dashboard(request):
     </html>
     """
     return HttpResponse(html_content)
+@login_required
+def merchant_dashboard(request):
+    # 1. جلب الطلبات التي تم دفعها بنجاح فقط
+    paid_orders = Order.objects.filter(status='PAID')
+    
+    # 2. حساب إجمالي الأرباح
+    total_revenue = paid_orders.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    
+    # 3. حساب عدد الطلبات المدفوعة
+    total_orders_count = paid_orders.count()
+    
+    # 4. جلب أحدث 5 طلبات مدفوعة لعرضها في الجدول
+    recent_orders = paid_orders.order_by('-created_at')[:5]
+    
+    context = {
+        'total_revenue': total_revenue,
+        'total_orders_count': total_orders_count,
+        'recent_orders': recent_orders,
+    }
+    
+    # قراءة الملف مباشرة من مجلد templates الرئيسي بره
+    return render(request, 'dashboard.html', context)

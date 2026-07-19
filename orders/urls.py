@@ -16,3 +16,4 @@ urlpatterns = [
     # 🛡️ استقبال إشارات ومناسبات الدفع من Stripe (Webhook)
     path('webhook/', views.stripe_webhook, name='stripe-webhook'),
 ]
+path('dashboard/', views.merchant_dashboard, name='merchant_dashboard'),

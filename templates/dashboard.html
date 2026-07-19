@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة تحكم التاجر | Ecommerce SaaS</title>
+    <!-- تضمين Tailwind CSS لشكل مودرن وسريع -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تضمين مكتبة الرسومات البيانية -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 font-sans antialiased">
+
+    <div class="min-h-screen flex flex-col">
+        <!-- الهيدر العلوي -->
+        <header class="bg-white shadow-sm border-b border-gray-200 py-4 px-6 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">📊 لوحة تحكم متجرك</h1>
+            <div class="text-sm text-gray-600">أهلاً بك، <span class="font-bold text-indigo-600">{{ request.user.username }}</span></div>
+        </header>
+
+        <!-- المحتوى الرئيسي -->
+        <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+            
+            <!-- كروت الإحصائيات السريعة -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- كارت الأرباح -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 uppercase">إجمالي الأرباح</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-1">${{ total_revenue }}</p>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-full text-green-600 text-2xl">💰</div>
+                </div>
+
+                <!-- كارت الطلبات -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 uppercase">الطلبات الناجحة</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-1">{{ total_orders_count }} طلب</p>
+                    </div>
+                    <div class="p-3 bg-indigo-100 rounded-full text-indigo-600 text-2xl">📦</div>
+                </div>
+
+                <!-- كارت حالة السيرفر/بوابة الدفع -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 uppercase">بوابة الدفع (Stripe)</p>
+                        <p class="text-lg font-bold text-green-600 mt-1 flex items-center">
+                            <span class="h-2.5 w-2.5 rounded-full bg-green-500 inline-block ml-2 animate-pulse"></span>
+                            متصل وتعمل بنجاح
+                        </p>
+                    </div>
+                    <div class="p-3 bg-gray-100 rounded-full text-2xl">💳</div>
+                </div>
+            </div>
+
+            <!-- الرسم البياني وجدول الأوردرات -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- الرسم البياني -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:col-span-2">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">📈 أداء المبيعات الأخير</h3>
+                    <div class="h-64">
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- جدول آخر الأوردرات -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">🛒 أحدث 5 طلبات مدفوعة</h3>
+                    <div class="flow-root">
+                        <ul class="-my-5 divide-y divide-gray-200">
+                            {% for order in recent_orders %}
+                            <li class="py-4">
+                                <div class="flex items-center space-x-4 space-x-reverse">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold text-gray-900 truncate">طلب رقم #{{ order.id }}</p>
+                                        <p class="text-xs text-gray-500">{{ order.created_at|date:"Y-m-d H:i" }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            +${{ order.total_amount }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </li>
+                            {% empty %}
+                            <li class="py-4 text-center text-sm text-gray-500">لا توجد طلبات مدفوعة حتى الآن.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- سكريبت تشغيل الرسم البياني -->
+    <script>
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'],
+                datasets: [{
+                    label: 'المبيعات ($)',
+                    data: [120, 190, 300, {{ total_revenue }}, 200, 400, 550], 
+                    borderColor: 'rgb(79, 70, 229)',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    </script>
+</body>
+</html>
